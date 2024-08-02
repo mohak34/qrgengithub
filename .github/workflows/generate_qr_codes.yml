@@ -1,0 +1,52 @@
+name: Generate QR Codes
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [generate-qr-codes]
+
+jobs:
+  generate-qr-codes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install qrcode[pil]
+
+      - name: Generate QR codes
+        run: |
+          import qrcode
+          import os
+
+          # Create QR folder if it doesn't exist
+          if not os.path.exists('qr'):
+              os.makedirs('qr')
+
+          # Read registration numbers from file
+          with open('registrations.txt', 'r') as f:
+              registrations = f.read().splitlines()
+
+          # Generate QR codes
+          for reg in registrations:
+              qr = qrcode.QRCode(version=1, box_size=10, border=5)
+              qr.add_data(reg)
+              qr.make(fit=True)
+              img = qr.make_image(fill_color="black", back_color="white")
+              img.save(f"qr/{reg}.png")
+        shell: python
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add qr/
+          git commit -m "Generate QR codes" || echo "No changes to commit"
+          git push
